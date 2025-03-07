@@ -70,13 +70,12 @@ export async function POST(request: Request) {
     // Create a Nodemailer transporter with more detailed configuration
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 587,
+      port: 465,
       secure: true, // use SSL
       auth: {
         user: "qixulujhb024@student.wethinkcode.co.za",
         pass: process.env.EMAIL_PASSWORD,
       },
-      debug: true, // Enable debugging for troubleshooting
     });
 
     // Email content
