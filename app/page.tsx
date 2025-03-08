@@ -33,7 +33,7 @@ export default function Home() {
           <p className="mt-2">
             Having trouble? Contact{" "}
             <a href="mailto:qixulujhb024@student.wethinkcode.co.za" className="font-medium text-primary hover:underline">
-              qixulujhb024@student.wethinkcode.co.za
+              Student Community Support
             </a>
           </p>
         </div>
