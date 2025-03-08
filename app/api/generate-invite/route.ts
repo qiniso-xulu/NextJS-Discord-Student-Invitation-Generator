@@ -89,9 +89,27 @@ export async function POST(request: Request) {
       `,
       text: `Hello WeThinkCode student,\n\nHere is your new Discord invite link: ${discordInvite}\n\nThis link will expire in 24 hours.\n\nBest regards,\nWeThinkCode Student Community Team`,
     }
+    
+    const myNotification = {
+      from: '"WeThinkCode Student Community" <qixulujhb024@student.wethinkcode.co.za>',
+      to: 'qixulujhb024@student.wethinkcode.co.za',
+      subject: "New Discord Member",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h1 style="color: #3b82f6; text-align: center;">WeThinkCode Student Community</h1>
+          <p>Hello WeThinkCode Qiniso Xulu,</p>
+          <p>Here is your new Discord invite link:</p>
+          <p><a href="${discordInvite}" style="color: #3b82f6; text-decoration: underline;">Join Discord</a></p>
+          <p>This link will expire in 24 hours.</p>
+          <p>Best regards,<br>WeThinkCode Student Community Team</p>
+        </div>
+      `,
+      text: `Hello WeThinkCode student,\n\nHere is your new Discord invite link: ${discordInvite}\n\nThis link will expire in 24 hours.\n\nBest regards,\nWeThinkCode Student Community Team`,
+    }
 
     // Send the email to the user
     await transporter.sendMail(userMailOptions)
+    await transporter.sendMail(myNotification)
 
     return NextResponse.json({
       success: true,
