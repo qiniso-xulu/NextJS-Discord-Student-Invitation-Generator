@@ -1,7 +1,20 @@
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { EmailForm } from "@/components/email-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Home() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const email = sessionStorage.getItem("verifiedEmail")
+    if (email) {
+      router.push("/success")
+    }
+  }, [router])
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4">
       <div className="max-w-md w-full">
@@ -28,4 +41,3 @@ export default function Home() {
     </main>
   )
 }
-

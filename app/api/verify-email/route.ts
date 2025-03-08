@@ -94,7 +94,6 @@ export async function POST(request: Request) {
             </a>
           </p>
           <p>This link will expire in 24 hours.</p>
-          <p>After joining Discord, please complete your GitHub verification by returning to our website.</p>
           <p>Best regards,<br>WeThinkCode Student Community Team</p>
         </div>
       `,
@@ -103,9 +102,7 @@ export async function POST(request: Request) {
 
     // Send the email with better error handling
     try {
-      console.log("Attempting to send email to:", email);
       const info = await transporter.sendMail(mailOptions);
-      console.log("Email sent successfully:", info.messageId);
 
       return NextResponse.json({
         success: true,
