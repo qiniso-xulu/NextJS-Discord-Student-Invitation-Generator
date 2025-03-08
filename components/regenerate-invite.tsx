@@ -1,22 +1,37 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Mail, Check } from "lucide-react"
+import { Loader2, RefreshCw, Mail, Check } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 export function RegenerateInvite({ email }: { email: string }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showDiscordForm, setShowDiscordForm] = useState(false)
   const [discordUsername, setDiscordUsername] = useState("")
-  const [requestSent, setRequestSent] = useState(
-    // Check localStorage to see if the request has already been sent
-    typeof window !== "undefined" ? localStorage.getItem("requestSent") === "true" : false
+  const [hasRegenerated, setHasRegenerated] = useState(
+    // Check localStorage to see if the user has already regenerated the link
+    typeof window !== "undefined" ? localStorage.getItem("hasRegenerated") === "true" : false
   )
 
-  async function handleRequestAccess() {
-    if (!email || requestSent) return // Prevent multiple requests
+  // Load regeneration status from localStorage on component mount
+  useEffect(() => {
+    const storedStatus = localStorage.getItem("hasRegenerated")
+    if (storedStatus) {
+      setHasRegenerated(storedStatus === "true")
+    }
+  }, [])
+
+  // Update localStorage whenever hasRegenerated changes
+  useEffect(() => {
+    localStorage.setItem("hasRegenerated", hasRegenerated.toString())
+  }, [hasRegenerated])
+
+  async function handleRegenerate() {
+    if (!email || hasRegenerated) return // Prevent regeneration if already done
 
     setIsLoading(true)
     setError(null)
@@ -27,21 +42,17 @@ export function RegenerateInvite({ email }: { email: string }) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, discordUsername }),
+        body: JSON.stringify({ email }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to send request")
+        throw new Error(data.error || "Failed to generate invite")
       }
 
       setSuccess(true)
-      setRequestSent(true)
-      // Store the request status in localStorage
-      if (typeof window !== "undefined") {
-        localStorage.setItem("requestSent", "true")
-      }
+      setHasRegenerated(true) // Mark regeneration as done
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
     } finally {
@@ -49,16 +60,94 @@ export function RegenerateInvite({ email }: { email: string }) {
     }
   }
 
-  if (success) {
+  async function handleSubmitDiscordUsername() {
+    if (!discordUsername) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/submit-discord-username", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, discordUsername }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit Discord username")
+      }
+
+      setSuccess(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (success && !hasRegenerated) {
     return (
       <Alert className="bg-green-50 border-green-200 mt-4">
         <AlertDescription>
-          <p className="font-medium">Student Community Team has been notified.</p>
+          <p className="font-medium">A new invite link has been sent to your email.</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            A Student Community Member will review your request and contact you shortly.
+            Please check your inbox for the new invite link.
           </p>
         </AlertDescription>
       </Alert>
+    )
+  }
+
+  if (hasRegenerated) {
+    return (
+      <div className="mt-4 space-y-4">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div>
+          <label htmlFor="discordUsername" className="block text-sm font-medium text-gray-700">
+            Discord Username
+          </label>
+          <Input
+            id="discordUsername"
+            type="text"
+            value={discordUsername}
+            onChange={(e) => setDiscordUsername(e.target.value)}
+            placeholder="Enter your Discord username (e.g., username#1234)"
+            className="mt-1"
+          />
+        </div>
+
+        <Button
+          onClick={handleSubmitDiscordUsername}
+          variant="outline"
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            <>
+              <Mail className="mr-2 h-4 w-4" />
+              Submit Discord Username
+            </>
+          )}
+        </Button>
+
+        <p className="text-xs text-muted-foreground text-center">
+          Please provide your Discord username so we can assist you.
+        </p>
+      </div>
     )
   }
 
@@ -70,51 +159,26 @@ export function RegenerateInvite({ email }: { email: string }) {
         </Alert>
       )}
 
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="discordUsername" className="block text-sm font-medium text-gray-700">
-            Discord Username
-          </label>
-          <input
-            id="discordUsername"
-            type="text"
-            value={discordUsername}
-            onChange={(e) => setDiscordUsername(e.target.value)}
-            className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-            placeholder="Enter your Discord username"
-            required
-          />
-        </div>
-
-        <Button
-          onClick={handleRequestAccess}
-          variant="outline"
-          className="w-full"
-          disabled={isLoading || requestSent} // Disable the button after the request is sent
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
-            </>
-          ) : requestSent ? (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              Request Sent
-            </>
-          ) : (
-            <>
-              <Mail className="mr-2 h-4 w-4" />
-              Request Access
-            </>
-          )}
-        </Button>
-      </div>
-
+      <Button
+        onClick={handleRegenerate}
+        variant="outline"
+        className="w-full"
+        disabled={isLoading || hasRegenerated} // Disable the button if regeneration is done
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Regenerate Invite
+          </>
+        )}
+      </Button>
       <p className="text-xs text-muted-foreground mt-2 text-center">
-        {requestSent
-          ? "Your request has been sent. A Student Community Member will contact you shortly."
-          : "Click the button to request access to the Discord server."}
+        Click the button to generate a new invite link.
       </p>
     </div>
   )

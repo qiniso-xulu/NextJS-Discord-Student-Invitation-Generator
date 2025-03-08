@@ -1,9 +1,46 @@
 import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 
+// Function to generate a valid Discord invite using the Discord API
+async function generateDiscordInvite(): Promise<string | null> {
+  const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN
+  const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID
+
+  if (!DISCORD_BOT_TOKEN || !DISCORD_CHANNEL_ID) {
+    console.error("Missing Discord bot token or channel ID.")
+    return null
+  }
+
+  try {
+    const response = await fetch(`https://discord.com/api/v10/channels/${DISCORD_CHANNEL_ID}/invites`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        max_uses: 1, // One-time use
+        max_age: 86400, // Expires in 24 hours (86400 seconds)
+        temporary: false,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error("Failed to create invite:", await response.text())
+      return null
+    }
+
+    const data = await response.json()
+    return `https://discord.gg/${data.code}` // Return the valid invite link
+  } catch (error) {
+    console.error("Error generating Discord invite:", error)
+    return null
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const { email, discordUsername } = await request.json()
+    const { email } = await request.json()
 
     // Validate email format
     if (!email || !email.endsWith("@student.wethinkcode.co.za")) {
@@ -13,16 +50,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate Discord username
-    if (!discordUsername) {
+    // Generate a new invite
+    const discordInvite = await generateDiscordInvite()
+
+    // Handle the case where the invite generation failed (null result)
+    if (!discordInvite) {
       return NextResponse.json(
-        { error: "Discord username is required." },
-        { status: 400 }
+        { error: "Failed to generate invite." },
+        { status: 500 }
       )
     }
-
-    // Notify the Student Community Member
-    const communityMemberEmail = "qixulujhb024@student.wethinkcode.co.za"
 
     // Create a Nodemailer transporter
     const transporter = nodemailer.createTransport({
@@ -35,31 +72,30 @@ export async function POST(request: Request) {
       },
     })
 
-    // Email content for the Student Community Member
-    const memberMailOptions = {
+    // Email content for the user
+    const userMailOptions = {
       from: '"WeThinkCode Student Community" <qixulujhb024@student.wethinkcode.co.za>',
-      to: communityMemberEmail,
-      subject: "New Access Request",
+      to: email,
+      subject: "Your New Discord Invite Link",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
           <h1 style="color: #3b82f6; text-align: center;">WeThinkCode Student Community</h1>
-          <p>Hello Student Community Member,</p>
-          <p>A student has requested access to the Discord server:</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Discord Username:</strong> ${discordUsername}</p>
-          <p>Please review the request and take appropriate action.</p>
+          <p>Hello WeThinkCode student,</p>
+          <p>Here is your new Discord invite link:</p>
+          <p><a href="${discordInvite}" style="color: #3b82f6; text-decoration: underline;">Join Discord</a></p>
+          <p>This link will expire in 24 hours.</p>
           <p>Best regards,<br>WeThinkCode Student Community Team</p>
         </div>
       `,
-      text: `Hello Student Community Member,\n\nA student has requested access to the Discord server:\n\nEmail: ${email}\nDiscord Username: ${discordUsername}\n\nPlease review the request and take appropriate action.\n\nBest regards,\nWeThinkCode Student Community Team`,
+      text: `Hello WeThinkCode student,\n\nHere is your new Discord invite link: ${discordInvite}\n\nThis link will expire in 24 hours.\n\nBest regards,\nWeThinkCode Student Community Team`,
     }
 
-    // Send the email to the Student Community Member
-    await transporter.sendMail(memberMailOptions)
+    // Send the email to the user
+    await transporter.sendMail(userMailOptions)
 
     return NextResponse.json({
       success: true,
-      message: "Student Community Team has been notified.",
+      message: "A new invite link has been sent to your email.",
     })
   } catch (error) {
     console.error("Server error:", error)
